@@ -26,7 +26,8 @@ def main():
             base_url=azure_openai_endpoint,
             api_key=token_provider
         )
-
+        # Track responses
+        last_response = None
 
         # Loop until the user wants to quit
         while True:
@@ -38,15 +39,14 @@ def main():
                 continue
 
             # Get a response
-            completion = openai_client.chat.completions.create(
+            response = openai_client.responses.create(
                 model=model_deployment,
-                messages=[
-                    {"role": "system", "content":"You are a helpful assistant."},
-                    {"role": "user", "content": input_text}
-                ]
+                instructions="You are a helpful assistant.",
+                input=input_text,
+                previous_response_id=last_response.id if last_response else None
             )
-            print(f"\nResponse:\n{completion.choices[0].message.content}")
-            
+            print(f"\nResponse:\n{response.output_text}")
+            last_response = response
 
     except Exception as ex:
         print(ex)

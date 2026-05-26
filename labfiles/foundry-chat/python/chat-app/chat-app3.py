@@ -1,6 +1,7 @@
 import os
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from dotenv import load_dotenv
+from httpx import stream
 from openai import OpenAI
 
 # import namespaces
@@ -26,7 +27,8 @@ def main():
             base_url=azure_openai_endpoint,
             api_key=token_provider
         )
-
+        # Track responses
+        last_response_id = None
 
         # Loop until the user wants to quit
         while True:
@@ -38,15 +40,19 @@ def main():
                 continue
 
             # Get a response
-            completion = openai_client.chat.completions.create(
-                model=model_deployment,
-                messages=[
-                    {"role": "system", "content":"You are a helpful assistant."},
-                    {"role": "user", "content": input_text}
-                ]
+            stream = openai_client.responses.create(
+             model=model_deployment,
+             instructions="You are a helpful AI assistant that answers questions and provides information.",
+             input=input_text,
+             previous_response_id=last_response_id,
+             stream=True
             )
-            print(f"\nResponse:\n{completion.choices[0].message.content}")
-            
+            for event in stream:
+                if event.type == "response.output_text.delta":
+                    print(event.delta, end="")
+                elif event.type == "response.completed":
+                    last_response_id = event.response.id
+            print()
 
     except Exception as ex:
         print(ex)
