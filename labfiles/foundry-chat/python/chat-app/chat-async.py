@@ -2,7 +2,9 @@ import os
 from dotenv import load_dotenv
 
 # import namespaces for async
-
+import asyncio
+from openai import AsyncOpenAI
+from azure.identity.aio import DefaultAzureCredential, get_bearer_token_provider
 
 
 async def main(): 
@@ -17,6 +19,15 @@ async def main():
         model_deployment = os.getenv("MODEL_DEPLOYMENT")
 
         # Initialize an async OpenAI client
+        credentials = DefaultAzureCredential()
+        token_provider = get_bearer_token_provider(
+            credentials, "https://ai.azure.com/.default"
+        )
+
+        async_client = AsyncOpenAI(
+            base_url=azure_openai_endpoint,
+            api_key=token_provider
+        )
 
         
 
@@ -33,14 +44,23 @@ async def main():
                 continue
 
             # Await an asynchronous response
+            response = await async_client.responses.create(
+                model=model_deployment,
+                instructions="You are a helpful AI assistant that answers questions and provides information.",
+                input=input_text,
+                previous_response_id=last_response_id
+            )
 
-            
+            assitance_text = response.output_text
+            print("Assistan:", assitance_text)
+            last_response_id = response.id
 
     except Exception as ex:
         print(ex)
 
     finally:
         # Close the async client session
+        await credentials.close()
 
 
 
